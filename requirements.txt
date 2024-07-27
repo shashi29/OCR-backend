@@ -1,0 +1,6 @@
+unstructured[all-docs]
+fastapi
+uvicorn
+fsspec
+gcsfs
+google-cloud-storage
