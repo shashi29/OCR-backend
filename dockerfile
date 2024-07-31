@@ -30,4 +30,4 @@ ENV PORT 1234
 EXPOSE $PORT
 
 # As an example here we're running the web service with one worker on uvicorn.
-CMD exec uvicorn main:app --host 0.0.0.0 --port ${PORT} --workers 1
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 1

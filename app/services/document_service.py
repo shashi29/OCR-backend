@@ -33,7 +33,7 @@ class DocumentService:
         #self.storage_repo.upload_file(file.filename, tmp_path)
         # self.storage_repo.upload_json(f"{file.filename}.json", [data.dict() for data in processed_data])
 
-        # self.vector_db_repo.add_data_to_collection([data.dict() for data in processed_data])
+        self.vector_db_repo.add_data_to_collection(processed_data)
         
         return processed_data
 

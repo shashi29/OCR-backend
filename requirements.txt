@@ -1,8 +1,6 @@
 unstructured[all-docs]
 fastapi
 uvicorn
-pydantic>=2.0
-pydantic-settings
 google-cloud-storage
 qdrant-client
 sentence-transformers

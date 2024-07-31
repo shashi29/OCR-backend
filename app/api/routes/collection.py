@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.models.collection import CollectionRequest
 from app.services.collection_service import CollectionService
 from app.api.dependencies import get_collection_service
-
+import logging
 router = APIRouter()
 
 @router.post("/create/")
@@ -34,6 +34,6 @@ async def get_collection_details(
 ):
     try:
         details = collection_service.get_collection_details(request.collection_name)
-        return {"message": details}
+        return details
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get collection details: {str(e)}")

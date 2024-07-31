@@ -39,10 +39,10 @@ class VectorDBRepository:
         if operation_info.status != UpdateStatus.COMPLETED:
             raise Exception("Failed to insert data")
 
-    def search(self, query: str, limit: int):
+    def search(self, query: str, limit: int, collection_name: str):
         query_vector = self.embedding_model.encode(query)
         hits = self.qdrant_client.search(
-            collection_name=self.collection_name,
+            collection_name=collection_name,
             query_vector=("text", query_vector),
             limit=limit
         )
@@ -61,4 +61,4 @@ class VectorDBRepository:
         self.qdrant_client.delete_collection(collection_name=collection_name)
 
     def get_collection_details(self, collection_name: str):
-        return self.qdrant_client.get_collection(collection_name=collection_name).dict()
+        return self.qdrant_client.get_collection(collection_name=collection_name).json()
