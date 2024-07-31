@@ -1,6 +1,9 @@
 unstructured[all-docs]
 fastapi
 uvicorn
-fsspec
-gcsfs
+pydantic>=2.0
+pydantic-settings
 google-cloud-storage
+qdrant-client
+sentence-transformers
+python-dotenv
