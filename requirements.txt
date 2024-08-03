@@ -1,4 +1,6 @@
-unstructured[all-docs]
+#unstructured[all-docs]
+langchain
+langchain-unstructured[local]
 fastapi
 uvicorn
 google-cloud-storage

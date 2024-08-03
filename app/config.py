@@ -15,6 +15,14 @@ class Config:
     
     # Embedding Model
     EMBEDDING_MODEL = os.getenv('EMBEDDING_MODEL')
+    
+    #Unstructure IO OCR Model : 1.auto  2.fast  3.hi_res    4.ocr_only 
+    UNSTRUCTURE__OCR_STRATEGY = os.getenv('UNSTRUCTURE__OCR_STRATEGY')
+
+    #Langchain Retriever Paramter
+    LANGCHAIN__CHUNK_SIZE = os.getenv('LANGCHAIN__CHUNK_SIZE')
+    LANGCHAIN__CHUNK_OVERLAP = os.getenv('LANGCHAIN__CHUNK_OVERLAP')
+
 
 # Access settings
 # config = Config()

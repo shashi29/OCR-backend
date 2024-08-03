@@ -13,7 +13,7 @@ class VectorDBRepository:
         self.collection_name = Config.QDRANT_COLLECTION_NAME
         self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL, trust_remote_code=True)
 
-    def add_data_to_collection(self, data: List[Dict]):
+    def add_data_to_collection_unstructure(self, data: List[Dict]):
         points = []
         for item in data:
             text_id = str(uuid.uuid4())
@@ -26,6 +26,33 @@ class VectorDBRepository:
                 "filetype": item["metadata"].get("filetype"),
                 "last_modified": item["metadata"].get("last_modified"),
                 "page_number": item["metadata"].get("page_number"),
+            }
+            point = PointStruct(id=text_id, vector=vector, payload=payload)
+            points.append(point)
+
+        operation_info = self.qdrant_client.upsert(
+            collection_name=self.collection_name,
+            wait=True,
+            points=points
+        )
+
+        if operation_info.status != UpdateStatus.COMPLETED:
+            raise Exception("Failed to insert data")
+        
+    def add_data_to_collection_unstructure(self, data: List[Dict]):
+        points = []
+        for item in data:
+            text_id = str(uuid.uuid4())
+            vector = self.embedding_model.encode(item.to_json()['kwargs']['page_content'])
+            payload = {
+                "text_id": text_id,
+                "text": item.to_json()['kwargs']['page_content'],
+                "category": item.to_json()['kwargs']['metadata']['category'],
+                "languages": item.to_json()['kwargs']['metadata']["languages"],
+                "filetype": item.to_json()['kwargs']['metadata']['filetype'],
+                "last_modified": item.to_json()['kwargs']['metadata']['last_modified'],
+                "coordinates": item.to_json()['kwargs']['metadata']['coordinates']['points'],
+                "page_number": item.to_json()['kwargs']['metadata']['page_number'],
             }
             point = PointStruct(id=text_id, vector=vector, payload=payload)
             points.append(point)

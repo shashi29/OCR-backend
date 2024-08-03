@@ -1,15 +1,8 @@
 # Use an official Python runtime as a parent image
 FROM python:3.10-slim
 
-# Set environment variables to avoid interactive prompts during package installation
-ENV DEBIAN_FRONTEND=noninteractive
-
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    tesseract-ocr \
-    libtesseract-dev \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libmagic1 poppler-utils tesseract-ocr
 
 # Set the working directory in the container
 WORKDIR /app
@@ -30,4 +23,4 @@ ENV PORT 1234
 EXPOSE $PORT
 
 # As an example here we're running the web service with one worker on uvicorn.
-CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 1
+CMD exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --loop asyncio

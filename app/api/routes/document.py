@@ -12,7 +12,7 @@ async def process_document(
     document_service: DocumentService = Depends(get_document_service)
 ):  
     try:
-        return await document_service.process_pdf(file)
+        return await document_service.process_docs_unstructure(file)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing File: {str(e)}")
 

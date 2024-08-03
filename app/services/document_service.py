@@ -1,42 +1,116 @@
 import tempfile
+import os
 from typing import List
 from fastapi import UploadFile
-from unstructured.partition.auto import partition
+from langchain_unstructured import UnstructuredLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from app.repositories.storage_repository import StorageRepository
 from app.repositories.vector_db_repository import VectorDBRepository
 from app.models.document import ProcessedData, SearchResult
+from app.config import Config
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class DocumentService:
     def __init__(self, storage_repo: StorageRepository, vector_db_repo: VectorDBRepository):
         self.storage_repo = storage_repo
         self.vector_db_repo = vector_db_repo
+        self.ocr_strategy = Config.UNSTRUCTURE__OCR_STRATEGY
+        self.chunk_size = Config.LANGCHAIN__CHUNK_SIZE
+        self.chunk_overlap = Config.LANGCHAIN__CHUNK_OVERLAP
 
-    async def process_pdf(self, file: UploadFile):
-        with tempfile.NamedTemporaryFile(delete=False) as tmp:
-            tmp.write(await file.read())
-            tmp_path = tmp.name
+    async def process_pdf(self, file: UploadFile) -> List[dict]:
+        tmp_path = None
+        try:
+            # Create a temporary file and write the uploaded file content to it
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                tmp.write(await file.read())
+                tmp_path = tmp.name
 
-        partition_output = partition(
-            filename=tmp_path,
-            extract_image_block_to_payload=True,
-            extract_images_in_pdf=True,
-            pdf_infer_table_structure=True,
-            strategy="hi_res",
-            #chunking_strategy="by_title",
-            max_characters=4000,
-            new_after_n_chars=3800,
-            combine_text_under_n_chars=2000
-        )
+            logger.info(f"Temporary file created at: {tmp_path}")
 
-        processed_data = [page.to_dict() for page in partition_output]
-        # print(file.filename, tmp_path)
-        #self.storage_repo.upload_file(file.filename, tmp_path)
-        # self.storage_repo.upload_json(f"{file.filename}.json", [data.dict() for data in processed_data])
+            # Process the PDF using the partition function
+            partition_output = partition(
+                filename=tmp_path,
+                extract_image_block_to_payload=True,
+                extract_images_in_pdf=True,
+                pdf_infer_table_structure=True,
+                strategy="hi_res",
+                max_characters=4000,
+                new_after_n_chars=3800,
+                combine_text_under_n_chars=2000
+            )
 
-        self.vector_db_repo.add_data_to_collection(processed_data)
-        
-        return processed_data
+            processed_data = [page.to_dict() for page in partition_output]
+
+            # Optional: Upload the processed file and JSON data to storage
+            # self.storage_repo.upload_file(file.filename, tmp_path)
+            # self.storage_repo.upload_json(f"{file.filename}.json", [data.dict() for data in processed_data])
+
+            # Add processed data to vector database
+            self.vector_db_repo.add_data_to_collection(processed_data)
+            
+            logger.info(f"Processed PDF data for file: {file.filename}")
+
+            return processed_data
+        except Exception as e:
+            logger.error(f"Error processing PDF document: {e}", exc_info=True)
+            raise
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.remove(tmp_path)
+                logger.info(f"Temporary file at {tmp_path} has been removed")
+
+    async def process_docs_unstructure(self, file: UploadFile) -> List[dict]:
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(delete=False) as tmp:
+                tmp.write(await file.read())
+                tmp_path = tmp.name
+
+            logger.info(f"Temporary file created at: {tmp_path}")
+
+            # Load the document using the UnstructuredLoader
+            loader = UnstructuredLoader(tmp_path, strategy=self.ocr_strategy)
+            documents = loader.load()
+
+            # Split the loaded documents into chunks
+            text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=int(self.chunk_size), 
+                chunk_overlap=int(self.chunk_overlap)
+            )
+            processed_data = text_splitter.split_documents(documents=documents)
+
+            # Add processed data to vector database
+            self.vector_db_repo.add_data_to_collection_unstructure(processed_data)
+            processed_data = [page.to_json() for page in processed_data]
+            
+            logger.info(f"Processed unstructured data for file: {file.filename}")
+
+            return processed_data
+        except Exception as e:
+            logger.error(f"Error processing unstructured document: {e}", exc_info=True)
+            raise
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                os.remove(tmp_path)
+                logger.info(f"Temporary file at {tmp_path} has been removed")
 
     def search_documents(self, query: str, limit: int) -> List[SearchResult]:
-        results = self.vector_db_repo.search(query, limit)
-        return [SearchResult(**result["payload"], score=result["score"]) for result in results]
+        try:
+            results = self.vector_db_repo.search(query, limit)
+            search_results = [SearchResult(**result["payload"], score=result["score"]) for result in results]
+            logger.info(f"Search completed for query: {query}")
+            return search_results
+        except Exception as e:
+            logger.error(f"Error searching documents: {e}", exc_info=True)
+            raise
+
+# Example usage
+# Initialize the DocumentService with required parameters
+# document_service = DocumentService(storage_repo=StorageRepository(), vector_db_repo=VectorDBRepository())
+# processed_data = await document_service.process_docs_unstructure(file)
+# search_results = document_service.search_documents(query="example", limit=10)
