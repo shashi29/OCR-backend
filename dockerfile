@@ -2,7 +2,12 @@
 FROM python:3.10-slim
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y libmagic1 poppler-utils tesseract-ocr
+RUN apt-get update && apt-get install -y \
+    libmagic1 \
+    poppler-utils \
+    tesseract-ocr \
+    libgl1-mesa-glx \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory in the container
 WORKDIR /app
