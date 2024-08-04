@@ -1,9 +1,12 @@
 import tempfile
 import os
-from typing import List
+
+from typing import List, Dict, Any
 from fastapi import UploadFile
 from langchain_unstructured import UnstructuredLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_openai import OpenAI
+
 from app.repositories.storage_repository import StorageRepository
 from app.repositories.vector_db_repository import VectorDBRepository
 from app.models.document import ProcessedData, SearchResult
@@ -21,6 +24,8 @@ class DocumentService:
         self.ocr_strategy = Config.UNSTRUCTURE__OCR_STRATEGY
         self.chunk_size = Config.LANGCHAIN__CHUNK_SIZE
         self.chunk_overlap = Config.LANGCHAIN__CHUNK_OVERLAP
+        self.llm_service = OpenAI(temperature=OPENAI_TEMPERATURE, model=Config.OPENAI_LLM_MODEL)
+
 
     async def process_pdf(self, file: UploadFile) -> List[dict]:
         tmp_path = None
@@ -64,7 +69,7 @@ class DocumentService:
                 os.remove(tmp_path)
                 logger.info(f"Temporary file at {tmp_path} has been removed")
 
-    async def process_docs_unstructure(self, file: UploadFile) -> List[dict]:
+    async def process_docs_unstructure(self, file: UploadFile, collection: str) -> List[dict]:
         tmp_path = None
         try:
             with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -85,7 +90,7 @@ class DocumentService:
             processed_data = text_splitter.split_documents(documents=documents)
 
             # Add processed data to vector database
-            self.vector_db_repo.add_data_to_collection_unstructure(processed_data)
+            self.vector_db_repo.add_data_to_collection_unstructure(processed_data, collection)
             processed_data = [page.to_json() for page in processed_data]
             
             logger.info(f"Processed unstructured data for file: {file.filename}")
@@ -99,15 +104,48 @@ class DocumentService:
                 os.remove(tmp_path)
                 logger.info(f"Temporary file at {tmp_path} has been removed")
 
-    def search_documents(self, query: str, limit: int) -> List[SearchResult]:
+    def search_documents(self, query: str, limit: int, collection_name: str) -> dict[str, List[dict]]:
         try:
-            results = self.vector_db_repo.search(query, limit)
-            search_results = [SearchResult(**result["payload"], score=result["score"]) for result in results]
-            logger.info(f"Search completed for query: {query}")
-            return search_results
+            # Perform the search
+            results = self.vector_db_repo.search(query, limit, collection_name)
+            
+            # Check if results are empty
+            if not results:
+                logger.info(f"No results found for query: {query}")
+                return {"final_answer": "No results found", "metadata": []}
+
+            # Process the results to include final answer and metadata
+            final_answer = self._generate_final_answer(results, query)
+            #final_answer = ""
+            metadata = [result["payload"] for result in results]
+            
+            logger.info(f"Search completed for query: {query} with {len(results)} results.")
+            return {"final_answer": final_answer, "metadata": metadata}
+
         except Exception as e:
             logger.error(f"Error searching documents: {e}", exc_info=True)
             raise
+
+    def _generate_final_answer(self, results: List[Dict[str, Any]], query: str) -> str:
+        texts = [result["payload"]["text"] for result in results]
+        combined_text = "\n".join(texts)
+        formatted_prompt = self._get_formatted_prompt(combined_text, query)
+        
+        try:
+            final_answer = self.llm_service.invoke(formatted_prompt)
+            return final_answer
+        except Exception as e:
+            logger.error(f"Error generating final answer with LLM: {e}", exc_info=True)
+            return "Failed to generate final answer."
+
+    @staticmethod
+    def _get_formatted_prompt(combined_text: str, query: str) -> str:
+        return f"""
+        Given the following information: {combined_text}
+        Please answer this question based solely on the information provided above: {query}
+        Remember to use only the information from the given text in your answer. 
+        Do not introduce any external information or make assumptions beyond what is explicitly stated in the text.
+        """
 
 # Example usage
 # Initialize the DocumentService with required parameters

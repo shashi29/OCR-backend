@@ -12,3 +12,6 @@ class CollectionService:
 
     def get_collection_details(self, collection_name: str):
         return self.vector_db_repo.get_collection_details(collection_name)
+    
+    def get_all_collections_details(self):
+        return self.vector_db_repo.get_all_collections_details()

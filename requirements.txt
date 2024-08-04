@@ -1,5 +1,7 @@
 unstructured
 langchain
+langchain_core
+langchain_openai
 langchain-unstructured[local]
 fastapi
 uvicorn

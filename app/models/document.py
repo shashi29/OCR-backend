@@ -13,6 +13,7 @@ class ProcessedData(BaseModel):
 class SearchRequest(BaseModel):
     query: str = Field(..., example="What is the name in the dataset")
     limit: int = Field(5, example=10)
+    collection_name:str = Field(..., example="text_info")
 
 class SearchResult(BaseModel):
     text_id: str = Field(..., example="123e4567-e89b-12d3-a456-426614174000")
