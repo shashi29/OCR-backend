@@ -24,8 +24,7 @@ class DocumentService:
         self.ocr_strategy = Config.UNSTRUCTURE__OCR_STRATEGY
         self.chunk_size = Config.LANGCHAIN__CHUNK_SIZE
         self.chunk_overlap = Config.LANGCHAIN__CHUNK_OVERLAP
-        self.llm_service = OpenAI(temperature=OPENAI_TEMPERATURE, model=Config.OPENAI_LLM_MODEL)
-
+        self.llm_service = OpenAI(temperature=Config.OPENAI_TEMPERATURE)#, model=Config.OPENAI_LLM_MODEL)
 
     async def process_pdf(self, file: UploadFile) -> List[dict]:
         tmp_path = None

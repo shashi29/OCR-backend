@@ -22,6 +22,11 @@ class Config:
     #Langchain Retriever Paramter
     LANGCHAIN__CHUNK_SIZE = os.getenv('LANGCHAIN__CHUNK_SIZE')
     LANGCHAIN__CHUNK_OVERLAP = os.getenv('LANGCHAIN__CHUNK_OVERLAP')
+    
+    #Openai settings
+    OPENAI_API_KEY=os.getenv('OPENAI_API_KEY')
+    OPENAI_TEMPERATURE=os.getenv('OPENAI_TEMPERATURE')
+    OPENAI_LLM_MODEL=os.getenv('OPENAI_LLM_MODEL')
 
 
 # Access settings
