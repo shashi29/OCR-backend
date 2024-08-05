@@ -84,9 +84,9 @@ class VectorDBRepository:
         points = []
         for item in data:
             text_id = str(uuid.uuid4())
-            page_content = item.get('page_content', '')
+            page_content = item.to_json()['kwargs']['page_content']
             vector = self.embedding_model.encode(page_content).tolist()
-            metadata = item.get('metadata', {})
+            metadata = item.to_json()['kwargs']['metadata']
             payload = {
                 "text_id": text_id,
                 "text": page_content,

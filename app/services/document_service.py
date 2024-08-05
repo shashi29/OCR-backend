@@ -55,7 +55,7 @@ class DocumentService:
             # self.storage_repo.upload_json(f"{file.filename}.json", [data.dict() for data in processed_data])
 
             # Add processed data to vector database
-            self.vector_db_repo.add_data_to_collection(processed_data)
+            self.vector_db_repo.add_data_to_collection_unstructured(processed_data)
             
             logger.info(f"Processed PDF data for file: {file.filename}")
 
@@ -89,7 +89,7 @@ class DocumentService:
             processed_data = text_splitter.split_documents(documents=documents)
 
             # Add processed data to vector database
-            self.vector_db_repo.add_data_to_collection_unstructure(processed_data, collection)
+            self.vector_db_repo.add_data_to_collection_unstructured(processed_data, collection)
             processed_data = [page.to_json() for page in processed_data]
             
             logger.info(f"Processed unstructured data for file: {file.filename}")
