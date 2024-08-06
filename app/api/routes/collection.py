@@ -47,3 +47,14 @@ async def get_all_collection_details(
         return details
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get collection details: {str(e)}")
+    
+@router.post("/check-collection-exists/")
+async def check_collection_exists(
+    request: CollectionRequest,
+    collection_service: CollectionService = Depends(get_collection_service)
+):
+    try:
+        exists = collection_service.check_collection_exists(request.collection_name)
+        return {"collection_name": request.collection_name, "exists": exists}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to check if collection exists: {str(e)}")

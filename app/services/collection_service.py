@@ -15,3 +15,6 @@ class CollectionService:
     
     def get_all_collections_details(self):
         return self.vector_db_repo.get_all_collections_details()
+    
+    def check_collection_exists(self, collection_name: str):
+        return self.vector_db_repo.check_collection_exists(collection_name)

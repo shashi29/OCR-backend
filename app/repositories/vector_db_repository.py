@@ -174,3 +174,12 @@ class VectorDBRepository:
         except Exception as e:
             logger.error(f"Error retrieving details for collection {collection_name}: {e}")
             raise
+
+    def check_collection_exists(self, collection_name: str):
+        try:
+            collection_info = self.qdrant_client.collection_exists(collection_name=collection_name)
+            logger.info(f"Retrieved details for collection: {collection_name}")
+            return collection_info
+        except Exception as e:
+            logger.error(f"Error retrieving details for collection {collection_name}: {e}")
+            raise        
