@@ -27,6 +27,10 @@ class Config:
     OPENAI_API_KEY=os.getenv('OPENAI_API_KEY')
     OPENAI_TEMPERATURE=os.getenv('OPENAI_TEMPERATURE')
     OPENAI_LLM_MODEL=os.getenv('OPENAI_LLM_MODEL')
+    
+    #Ollama settings
+    USE_OLLAMA=os.getenv('USE_OLLAMA')
+    OLLAMA_MODEL=os.getenv('OLLAMA_MODEL')
 
 
 # Access settings

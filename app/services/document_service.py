@@ -27,12 +27,10 @@ class DocumentService:
         self.ocr_strategy = Config.UNSTRUCTURE__OCR_STRATEGY
         self.chunk_size = Config.LANGCHAIN__CHUNK_SIZE
         self.chunk_overlap = Config.LANGCHAIN__CHUNK_OVERLAP
-        self.llm_service = OpenAI(temperature=Config.OPENAI_TEMPERATURE)#, model=Config.OPENAI_LLM_MODEL)
+        self.openai_service = OpenAI(temperature=Config.OPENAI_TEMPERATURE)#, model=Config.OPENAI_LLM_MODEL)
         if Config.USE_OLLAMA:
             self._ensure_model_is_pulled(Config.OLLAMA_MODEL)
             self.llm_service = self._init_ollama_langchain_model(Config.OLLAMA_MODEL)
-        else:
-            self.llm_service = OpenAI(temperature=Config.OPENAI_TEMPERATURE)
 
     def _ensure_model_is_pulled(self, model_name: str):
         try:
@@ -190,7 +188,7 @@ class DocumentService:
         formatted_prompt = self._get_formatted_prompt(combined_text, query)
         
         try:
-            final_answer = self.llm_service.invoke(formatted_prompt)
+            final_answer = self.openai_service.invoke(formatted_prompt)
             return final_answer
         except Exception as e:
             logger.error(f"Error generating final answer with OpenAI: {e}", exc_info=True)

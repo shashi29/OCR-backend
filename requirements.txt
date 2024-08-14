@@ -10,3 +10,4 @@ qdrant-client
 sentence-transformers
 python-dotenv
 einops
+langchain_ollama
