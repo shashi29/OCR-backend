@@ -1,11 +1,14 @@
 import tempfile
 import os
+import subprocess
 
 from typing import List, Dict, Any
 from fastapi import UploadFile
 from langchain_unstructured import UnstructuredLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_openai import OpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_ollama.llms import OllamaLLM
 
 from app.repositories.storage_repository import StorageRepository
 from app.repositories.vector_db_repository import VectorDBRepository
@@ -25,6 +28,30 @@ class DocumentService:
         self.chunk_size = Config.LANGCHAIN__CHUNK_SIZE
         self.chunk_overlap = Config.LANGCHAIN__CHUNK_OVERLAP
         self.llm_service = OpenAI(temperature=Config.OPENAI_TEMPERATURE)#, model=Config.OPENAI_LLM_MODEL)
+        if Config.USE_OLLAMA:
+            self._ensure_model_is_pulled(Config.OLLAMA_MODEL)
+            self.llm_service = self._init_ollama_langchain_model(Config.OLLAMA_MODEL)
+        else:
+            self.llm_service = OpenAI(temperature=Config.OPENAI_TEMPERATURE)
+
+    def _ensure_model_is_pulled(self, model_name: str):
+        try:
+            # Try to pull the model using the Ollama CLI
+            result = subprocess.run(["ollama", "pull", model_name], check=True, capture_output=True, text=True)
+            logging.info(f"Model {model_name} successfully pulled.")
+        except subprocess.CalledProcessError as e:
+            logging.error(f"Failed to pull the model {model_name}: {e.output}")
+            raise RuntimeError(f"Failed to pull the model {model_name}")
+
+    def _init_ollama_langchain_model(self, ollama_model):
+        template = """Question: {question}
+
+        Answer: Let's think step by step."""
+        
+        prompt = ChatPromptTemplate.from_template(template)
+        model = OllamaLLM(model=ollama_model)
+        # chain = prompt | model
+        return model
 
     async def process_pdf(self, file: UploadFile) -> List[dict]:
         tmp_path = None
@@ -103,7 +130,7 @@ class DocumentService:
                 os.remove(tmp_path)
                 logger.info(f"Temporary file at {tmp_path} has been removed")
 
-    def search_documents(self, query: str, limit: int, collection_name: str) -> dict[str, List[dict]]:
+    def search_documents_ollama(self, query: str, limit: int, collection_name: str) -> dict[str, List[dict]]:
         try:
             # Perform the search
             results = self.vector_db_repo.search(query, limit, collection_name)
@@ -114,18 +141,38 @@ class DocumentService:
                 return {"final_answer": "No results found", "metadata": []}
 
             # Process the results to include final answer and metadata
-            final_answer = self._generate_final_answer(results, query)
-            #final_answer = ""
+            final_answer = self._generate_final_answer_ollama(results, query)
             metadata = [result["payload"] for result in results]
             
             logger.info(f"Search completed for query: {query} with {len(results)} results.")
             return {"final_answer": final_answer, "metadata": metadata}
 
         except Exception as e:
-            logger.error(f"Error searching documents: {e}", exc_info=True)
+            logger.error(f"Error searching documents with OllamaLLM: {e}", exc_info=True)
             raise
 
-    def _generate_final_answer(self, results: List[Dict[str, Any]], query: str) -> str:
+    def search_documents_openai(self, query: str, limit: int, collection_name: str) -> dict[str, List[dict]]:
+        try:
+            # Perform the search
+            results = self.vector_db_repo.search(query, limit, collection_name)
+            
+            # Check if results are empty
+            if not results:
+                logger.info(f"No results found for query: {query}")
+                return {"final_answer": "No results found", "metadata": []}
+
+            # Process the results to include final answer and metadata
+            final_answer = self._generate_final_answer_openai(results, query)
+            metadata = [result["payload"] for result in results]
+            
+            logger.info(f"Search completed for query: {query} with {len(results)} results.")
+            return {"final_answer": final_answer, "metadata": metadata}
+
+        except Exception as e:
+            logger.error(f"Error searching documents with OpenAI: {e}", exc_info=True)
+            raise
+
+    def _generate_final_answer_ollama(self, results: List[Dict[str, Any]], query: str) -> str:
         texts = [result["payload"]["text"] for result in results]
         combined_text = "\n".join(texts)
         formatted_prompt = self._get_formatted_prompt(combined_text, query)
@@ -134,7 +181,19 @@ class DocumentService:
             final_answer = self.llm_service.invoke(formatted_prompt)
             return final_answer
         except Exception as e:
-            logger.error(f"Error generating final answer with LLM: {e}", exc_info=True)
+            logger.error(f"Error generating final answer with OllamaLLM: {e}", exc_info=True)
+            return "Failed to generate final answer."
+
+    def _generate_final_answer_openai(self, results: List[Dict[str, Any]], query: str) -> str:
+        texts = [result["payload"]["text"] for result in results]
+        combined_text = "\n".join(texts)
+        formatted_prompt = self._get_formatted_prompt(combined_text, query)
+        
+        try:
+            final_answer = self.llm_service.invoke(formatted_prompt)
+            return final_answer
+        except Exception as e:
+            logger.error(f"Error generating final answer with OpenAI: {e}", exc_info=True)
             return "Failed to generate final answer."
 
     @staticmethod
@@ -150,4 +209,7 @@ class DocumentService:
 # Initialize the DocumentService with required parameters
 # document_service = DocumentService(storage_repo=StorageRepository(), vector_db_repo=VectorDBRepository())
 # processed_data = await document_service.process_docs_unstructure(file)
-# search_results = document_service.search_documents(query="example", limit=10)
+# if Config.USE_OLLAMA:
+#     search_results = document_service.search_documents_ollama(query="example", limit=10)
+# else:
+#     search_results = document_service.search_documents_openai(query="example", limit=10)

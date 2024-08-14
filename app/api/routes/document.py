@@ -69,12 +69,22 @@ async def process_document(
             }
         )
 
-@router.post("/search/", response_model=dict)
-async def search_documents(
+@router.post("/search-ollama/", response_model=dict)
+async def search_documents_ollama(
     request: SearchRequest,
     document_service: DocumentService = Depends(get_document_service)
 ):
     try:
-        return document_service.search_documents(request.query, request.limit, request.collection_name)
+        return document_service.search_documents_ollama(request.query, request.limit, request.collection_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error searching documents: {str(e)}")
+    
+@router.post("/search-openai/", response_model=dict)
+async def search_documents_openai(
+    request: SearchRequest,
+    document_service: DocumentService = Depends(get_document_service)
+):
+    try:
+        return document_service.search_documents_openai(request.query, request.limit, request.collection_name)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error searching documents: {str(e)}")
