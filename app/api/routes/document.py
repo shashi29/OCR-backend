@@ -69,6 +69,58 @@ async def process_document(
             }
         )
 
+@router.post("/process-invoice-document/", response_model=List[dict])
+async def process_invoice_document(
+    file: UploadFile = File(...),
+    document_service: DocumentService = Depends(get_document_service)
+):  
+    start_time = time.time()
+    try:
+        pdf_output = await document_service.process_invoice_structure(file)
+        end_time = time.time()
+        duration = end_time - start_time
+        
+        logging.info(f"Start Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(start_time))}")
+        logging.info(f"End Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(end_time))}")
+        logging.info(f"Process Duration: {duration:.2f} seconds")
+        logging.info(f"Success: True")
+        logging.info(f"Status Code: {status.HTTP_200_OK}")
+
+        return JSONResponse(
+            content=[{
+                "message": "Document processed successfully",
+                "start_time": time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(start_time)),
+                "end_time": time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(end_time)),
+                "process_duration": f"{duration:.2f} seconds",
+                "success": True,
+                "status_code": status.HTTP_200_OK
+            }],
+            status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        end_time = time.time()
+        duration = end_time - start_time
+        
+        logging.error(f"Start Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(start_time))}")
+        logging.error(f"End Time: {time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(end_time))}")
+        logging.error(f"Process Duration: {duration:.2f} seconds")
+        logging.error(f"Success: False")
+        logging.error(f"Status Code: {status.HTTP_500_INTERNAL_SERVER_ERROR}")
+        logging.error(f"Error: {str(e)}")
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Document processing failed",
+                "start_time": time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(start_time)),
+                "end_time": time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(end_time)),
+                "process_duration": f"{duration:.2f} seconds",
+                "success": False,
+                "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                "error": str(e)
+                }
+        )
+
 @router.post("/search/", response_model=dict)
 async def search_documents(
     request: SearchRequest,
